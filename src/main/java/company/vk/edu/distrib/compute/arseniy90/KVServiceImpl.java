@@ -13,6 +13,10 @@ import company.vk.edu.distrib.compute.Dao;
 import company.vk.edu.distrib.compute.KVService;
 
 public class KVServiceImpl implements KVService {
+    private static final String ENTITY_PATH = "/v0/entity";
+    private static final String STATUS_PATH = "/v0/status";
+    private static final String ID = "id";
+
     private static final Logger log = LoggerFactory.getLogger(KVServiceImpl.class);
     private final HttpServer server;
     private final Dao<byte[]> dao;
@@ -25,14 +29,14 @@ public class KVServiceImpl implements KVService {
     }
 
     private void initRoutes() {
-        server.createContext("/v0/status", this::handleStatus);
-        server.createContext("/v0/entity", this::handleEntity);
+        server.createContext(STATUS_PATH, this::handleStatus);
+        server.createContext(ENTITY_PATH, this::handleEntity);
     }
 
     private void handleStatus(HttpExchange exchange) throws IOException {
         try (exchange) {
             String path = exchange.getRequestURI().getPath();
-            if (!"GET".equals(exchange.getRequestMethod()) || !"/v0/status".equals(path)) {
+            if (!"GET".equals(exchange.getRequestMethod()) || !STATUS_PATH.equals(path)) {
                 exchange.sendResponseHeaders(java.net.HttpURLConnection.HTTP_BAD_METHOD, -1);
                 return;
             }
@@ -43,7 +47,7 @@ public class KVServiceImpl implements KVService {
     private void handleEntity(HttpExchange exchange) throws IOException {
         try (exchange) {
             java.net.URI uri = exchange.getRequestURI();
-            if (!"/v0/entity".equals(uri.getPath())) {
+            if (!ENTITY_PATH.equals(uri.getPath())) {
                 exchange.sendResponseHeaders(java.net.HttpURLConnection.HTTP_BAD_METHOD, -1);
                 return;
             }
@@ -98,7 +102,7 @@ public class KVServiceImpl implements KVService {
         }
 
         String[] pair = query.split("=");
-        if (pair.length == 2 && "id".equals(pair[0])) {
+        if (pair.length == 2 && ID.equals(pair[0])) {
             return pair[1];
         }
         
