@@ -7,12 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import company.vk.edu.distrib.compute.Dao;
 
-public class DaoImpl<T> implements Dao<T> {
+public class DaoImpl implements Dao<byte[]> {
 
-    private final Map<String, T> data = new ConcurrentHashMap<>();
+    private final Map<String, byte[]> data = new ConcurrentHashMap<>();
 
     @Override
-    public T get(String key) throws NoSuchElementException, IllegalArgumentException {
+    public byte[] get(String key) throws NoSuchElementException, IllegalArgumentException {
         return data.getOrDefault(key, null);
     }
 
@@ -22,7 +22,7 @@ public class DaoImpl<T> implements Dao<T> {
     }
 
     @Override
-    public void upsert(String key, T value) {
+    public void upsert(String key, byte[] value) {
         data.put(key, value);
     }
 

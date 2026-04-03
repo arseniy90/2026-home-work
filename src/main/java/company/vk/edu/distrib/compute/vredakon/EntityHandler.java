@@ -12,7 +12,7 @@ import company.vk.edu.distrib.compute.Dao;
 
 public class EntityHandler implements HttpHandler {
 
-    private final Dao<byte[]> dao = new DaoImpl<>();
+    private final Dao<byte[]> dao = new FileSystemDaoImpl();
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -35,13 +35,11 @@ public class EntityHandler implements HttpHandler {
 
             switch (exchange.getRequestMethod()) {
                 case "GET":
-                    byte[] data = dao.get(params.get("id"));
-                    if (data != null) {
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        byte[] data = dao.get(params.get("id"));
                         exchange.sendResponseHeaders(200, data.length);
-                        OutputStream os = exchange.getResponseBody();
                         os.write(data);
-                        os.close();
-                    } else {
+                    } catch (Exception e) {
                         exchange.sendResponseHeaders(404, -1);
                     }
                     break;
