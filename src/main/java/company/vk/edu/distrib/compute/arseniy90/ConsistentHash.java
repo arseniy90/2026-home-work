@@ -42,7 +42,7 @@ public class ConsistentHash implements HashRouter {
             byte[] digest = md.digest(key.getBytes(StandardCharsets.UTF_8));
             return ByteBuffer.wrap(digest).getInt();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 }

@@ -42,7 +42,7 @@ public class RendezvousHash implements HashRouter {
             byte[] digest = md.digest();
             return ByteBuffer.wrap(digest).getLong();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
     }
 }
