@@ -51,7 +51,7 @@ public class KVClusterImpl implements KVCluster {
             }
         });
     }
-    
+
     @Override
     public void stop() {
         nodes.values().forEach(ReplicatedKVServiceImpl::stop);

@@ -11,5 +11,5 @@ public class ArzhKVServiceFactoryImpl extends KVServiceFactory {
     protected KVService doCreate(int port) throws IOException {
         // return new KVServiceImpl(port, new InMemoryDaoImpl());
         return new KVServiceImpl(port, new FSDaoImpl(Path.of("./dao_data")));
-    }   
+    }
 }

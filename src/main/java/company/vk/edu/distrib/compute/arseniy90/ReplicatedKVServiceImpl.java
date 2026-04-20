@@ -39,25 +39,25 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
     private static final String INTERNAL_HEADER = "replica";
 
     private final String currentEndpoint;
+    private final int currentPort;
     private final HashRouter hashRouter;
     private final Dao<byte[]> dao;
     private final HttpServer server;
     private final HttpClient client;
     private final int replicationFactor;
-    private final int port;
     private final Set<Integer> disabledNodes = ConcurrentHashMap.newKeySet();
 
     private static final Logger log = LoggerFactory.getLogger(KVServiceImpl.class);
     private final ExecutorService executor = Executors.newFixedThreadPool(8);
 
-    public ReplicatedKVServiceImpl(String currentEndpoint, int replicationFactor, 
+    public ReplicatedKVServiceImpl(String currentEndpoint, int replicationFactor,
         HashRouter hashRouter, Dao<byte[]> dao) throws IOException {
         this.currentEndpoint = currentEndpoint;
         this.replicationFactor = replicationFactor;
         this.hashRouter = hashRouter;
         this.dao = dao;
-        this.port = Integer.parseInt(currentEndpoint.substring(currentEndpoint.lastIndexOf(':') + 1));
-        this.server = HttpServer.create(new InetSocketAddress(port), 0);
+        this.currentPort = Integer.parseInt(currentEndpoint.substring(currentEndpoint.lastIndexOf(':') + 1));
+        this.server = HttpServer.create(new InetSocketAddress(currentPort), 0);
         this.client = HttpClient.newBuilder().executor(executor).connectTimeout(Duration.ofMillis(500)).build();
         initRoutes();
     }
@@ -92,15 +92,12 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
                 return;
             }
 
-            if (exchange.getRequestHeaders().containsKey(INTERNAL_HEADER)) {
-                Response localRes = processRequest(exchange.getRequestMethod(), id, 
-                    exchange.getRequestBody().readAllBytes());
-                sendFinalResponse(exchange, localRes);
+            if (handleInternalRequest(exchange, id)) {
                 return;
             }
-            
+
             String ackParam = getParam(exchange, ACK);
-            log.debug("TEST ack {}", ackParam);
+            // log.debug("TEST ack {}", ackParam);
             int ack = (ackParam != null) ? Integer.parseInt(ackParam) : 1;
 
             if (id == null || ack <= 0 || ack > replicationFactor) {
@@ -108,17 +105,18 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
                 return;
             }
 
-            List<String> targets = hashRouter.getReplicas(id, replicationFactor);
-            log.debug("TEST targets {}", targets);
-            byte[] body = PUT_QUERY.equals(exchange.getRequestMethod()) 
-                ? exchange.getRequestBody().readAllBytes() : null;
-
-            List<CompletableFuture<Response>> futures = targets.stream()
-                .map(target -> proxyToReplica(target, exchange.getRequestMethod(), id, body))
-                .toList();
-
-            handleQuorum(exchange, futures, ack);
+            handleQuorum(exchange, id, ack);
         }
+    }
+
+    private boolean handleInternalRequest(HttpExchange exchange, String id) throws IOException {
+        if (exchange.getRequestHeaders().containsKey(INTERNAL_HEADER)) {
+            byte[] body = exchange.getRequestBody().readAllBytes();
+            Response localRes = processRequest(exchange.getRequestMethod(), id, body);
+            sendFinalResponse(exchange, localRes);
+            return true;
+        }
+        return false;
     }
 
     private CompletableFuture<Response> proxyToReplica(String targetEndpoint, String method, String id, byte[] body) {
@@ -145,8 +143,17 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
             .exceptionally(e -> new Response(HttpURLConnection.HTTP_UNAVAILABLE, null));
     }
 
-    private void handleQuorum(HttpExchange exchange, 
-        List<CompletableFuture<Response>> futures, int ack) throws IOException {
+    private void handleQuorum(HttpExchange exchange, String id, int ack) throws IOException {
+        List<String> targetEndpoints = hashRouter.getReplicas(id, replicationFactor);
+        log.debug("TEST targets {}", targetEndpoints);
+
+        byte[] body = PUT_QUERY.equals(exchange.getRequestMethod())
+            ? exchange.getRequestBody().readAllBytes() : null;
+
+        List<CompletableFuture<Response>> futures = targetEndpoints.stream()
+            .map(target -> proxyToReplica(target, exchange.getRequestMethod(), id, body))
+            .toList();
+
         List<Response> responses = collectResponses(futures);
         List<Response> validResponses = responses.stream()
                 .filter(res -> res.status < HttpURLConnection.HTTP_INTERNAL_ERROR)
@@ -198,9 +205,9 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
                     dao.upsert(id, body);
                     return new Response(HttpURLConnection.HTTP_CREATED, null);
                 }
-                case DELETE_QUERY -> { 
+                case DELETE_QUERY -> {
                     dao.delete(id);
-                    return new Response(HttpURLConnection.HTTP_ACCEPTED, null); 
+                    return new Response(HttpURLConnection.HTTP_ACCEPTED, null);
                 }
                 default -> {
                     return new Response(HttpURLConnection.HTTP_BAD_METHOD, null);
@@ -226,8 +233,8 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
                 .orElse(null);
     }
 
-    @Override public int port() { 
-        return port;
+    @Override public int port() {
+        return currentPort;
     }
 
     @Override public int numberOfReplicas() {

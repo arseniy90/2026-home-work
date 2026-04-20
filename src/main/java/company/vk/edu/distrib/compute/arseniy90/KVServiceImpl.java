@@ -105,7 +105,7 @@ public class KVServiceImpl implements KVService {
         if (pair.length == 2 && ID.equals(pair[0])) {
             return pair[1];
         }
-        
+
         return null;
     }
 

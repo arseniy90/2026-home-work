@@ -35,8 +35,8 @@ public class InMemoryDaoImpl implements Dao<byte[]> {
     @Override
     public void close() {
         storage.clear();
-    }   
-    
+    }
+
     private void checkKey(String key) throws IllegalArgumentException {
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException("key is invalid");

@@ -11,9 +11,9 @@ public class ArzhKVClusterFactoryImpl extends KVClusterFactory {
 
     @Override
     protected KVCluster doCreate(List<Integer> ports) {
-        // return new KVClusterImpl(ports, Path.of("./cluster_data"), HashStrategy.RENDEZVOUS, 
+        // return new KVClusterImpl(ports, Path.of("./cluster_data"), HashStrategy.RENDEZVOUS,
         //  DEFAULT_REPLICATION_FACTOR);
-        return new KVClusterImpl(ports, Path.of("./cluster_data"), HashStrategy.CONSISTENT, 
+        return new KVClusterImpl(ports, Path.of("./cluster_data"), HashStrategy.CONSISTENT,
             DEFAULT_REPLICATION_FACTOR);
     }
 }

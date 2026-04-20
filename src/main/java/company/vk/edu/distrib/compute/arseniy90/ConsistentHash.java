@@ -32,7 +32,7 @@ public class ConsistentHash implements HashRouter {
         Set<String> replicas = new LinkedHashSet<>(targetCount);
         int hash = calcHash(key);
 
-        NavigableMap<Integer, String> tailMap = ring.tailMap(hash, true);    
+        NavigableMap<Integer, String> tailMap = ring.tailMap(hash, true);
         for (String endpoint : tailMap.values()) {
             if (replicas.add(endpoint) && replicas.size() == targetCount) {
                 return new ArrayList<>(replicas);

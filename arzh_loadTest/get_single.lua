@@ -1,4 +1,4 @@
-local maxId = 6000 
+local maxId = 6000
 local method = "GET"
 local path = "/v0/entity?id="
 local headers = { ["Accept"] = "application/json" }

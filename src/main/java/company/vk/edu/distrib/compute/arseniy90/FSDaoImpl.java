@@ -70,7 +70,7 @@ public class FSDaoImpl implements Dao<byte[]> {
         try {
             Path filePath = getKeyFilePath(key);
             Files.deleteIfExists(filePath);
-            locks.remove(key); 
+            locks.remove(key);
         } finally {
             lock.writeLock().unlock();
         }
@@ -92,7 +92,7 @@ public class FSDaoImpl implements Dao<byte[]> {
         if (!filePath.startsWith(basePath)) {
             throw new IllegalArgumentException("resolved path is incorrect for key " + resolvedKey);
         }
-      
+
         return filePath;
     }
 
