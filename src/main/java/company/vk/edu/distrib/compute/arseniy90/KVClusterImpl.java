@@ -2,7 +2,6 @@ package company.vk.edu.distrib.compute.arseniy90;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.http.HttpClient;
 import java.nio.file.Path;
 
 import java.util.ArrayList;
@@ -17,20 +16,20 @@ public class KVClusterImpl implements KVCluster {
     private static final String HOST_COLON = "http://localhost:";
     private static final String NODE_DATA_PATH_PREFIX = "node_";
 
-    private final Map<String, SharedKVServiceImpl> nodes = new ConcurrentHashMap<>();
+    private final Map<String, ReplicatedKVServiceImpl> nodes = new ConcurrentHashMap<>();
     private final List<String> endpoints;
     private final Path workingDir;
-    private final HashStrategy hashStrategy;
-    private final HttpClient sharedClient;
+    private final HashRouter hashRouter;
+    private final int replicationFactor;
 
-    public KVClusterImpl(List<Integer> ports, Path workingDir, HashStrategy hashStrategy) {
+    public KVClusterImpl(List<Integer> ports, Path workingDir, HashStrategy hashStrategy, int replicationFactor) {
         this.endpoints = ports.stream()
                 .sorted()
                 .map(p -> HOST_COLON + p)
                 .toList();
         this.workingDir = workingDir;
-        this.hashStrategy = hashStrategy;
-        this.sharedClient = HttpClient.newHttpClient();
+        this.hashRouter = hashStrategy.createRouter(endpoints);
+        this.replicationFactor = replicationFactor;
     }
 
     @Override
@@ -44,8 +43,7 @@ public class KVClusterImpl implements KVCluster {
             try {
                 Path nodePath = workingDir.resolve(NODE_DATA_PATH_PREFIX + e.hashCode());
                 Dao<byte[]> dao = new FSDaoImpl(nodePath);
-                HashRouter hashRouter = hashStrategy.createRouter(endpoints);
-                SharedKVServiceImpl node = new SharedKVServiceImpl(e, hashRouter, dao, sharedClient);
+                ReplicatedKVServiceImpl node = new ReplicatedKVServiceImpl(e, replicationFactor, hashRouter, dao);
                 node.start();
                 return node;
             } catch (IOException ex) {
@@ -53,16 +51,16 @@ public class KVClusterImpl implements KVCluster {
             }
         });
     }
-
+    
     @Override
     public void stop() {
-        nodes.values().forEach(SharedKVServiceImpl::stop);
+        nodes.values().forEach(ReplicatedKVServiceImpl::stop);
         nodes.clear();
     }
 
     @Override
     public void stop(String endpoint) {
-        SharedKVServiceImpl node = nodes.remove(endpoint);
+        ReplicatedKVServiceImpl node = nodes.remove(endpoint);
         if (node != null) {
             node.stop();
         }
