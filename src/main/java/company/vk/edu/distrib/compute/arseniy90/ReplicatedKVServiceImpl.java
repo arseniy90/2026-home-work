@@ -80,15 +80,8 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
 
     private void handleEntity(HttpExchange exchange) throws IOException {
         try (exchange) {
-            URI uri = exchange.getRequestURI();
-            if (!ENTITY_PATH.equals(uri.getPath())) {
-                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, -1);
-                return;
-            }
-
             String id = getParam(exchange, ID);
-            if (id == null || id.isBlank()) {
-                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+            if (!isIdValid(exchange, id)) {
                 return;
             }
 
@@ -96,12 +89,9 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
                 return;
             }
 
-            String ackParam = getParam(exchange, ACK);
-            // log.debug("TEST ack {}", ackParam);
-            int ack = (ackParam != null) ? Integer.parseInt(ackParam) : 1;
-
-            if (id == null || ack <= 0 || ack > replicationFactor) {
-                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+            int ack = parseAck(exchange);
+            // log.debug("TEST ack {}", ack);
+            if (ack < 0) {
                 return;
             }
 
@@ -217,6 +207,29 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
             return new Response(HttpURLConnection.HTTP_NOT_FOUND, null);
         } catch (Exception e) {
             return new Response(HttpURLConnection.HTTP_UNAVAILABLE, null);
+        }
+    }
+
+    private boolean isIdValid(HttpExchange exchange, String id) throws IOException {
+        if (id == null || id.isBlank()) {
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+            return false;
+        }
+        return true;
+    }
+
+    private int parseAck(HttpExchange exchange) throws IOException {
+        String ackParam = getParam(exchange, ACK);
+        try {
+            int ack = (ackParam != null) ? Integer.parseInt(ackParam) : 1;
+            if (ack <= 0 || ack > replicationFactor) {
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+                return -1;
+            }
+            return ack;
+        } catch (NumberFormatException e) {
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+            return -1;
         }
     }
 
