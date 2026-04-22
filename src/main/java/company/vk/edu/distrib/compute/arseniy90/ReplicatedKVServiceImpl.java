@@ -9,7 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -31,6 +31,7 @@ import company.vk.edu.distrib.compute.ReplicatedService;
 public class ReplicatedKVServiceImpl implements ReplicatedService {
     private static final String ENTITY_PATH = "/v0/entity";
     private static final String STATUS_PATH = "/v0/status";
+    private static final String STAT_PATH = "/stats/replica/";
     private static final String GET_QUERY = "GET";
     private static final String PUT_QUERY = "PUT";
     private static final String DELETE_QUERY = "DELETE";
@@ -46,6 +47,7 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
     private final HttpClient client;
     private final int replicationFactor;
     private final Set<Integer> disabledNodes = ConcurrentHashMap.newKeySet();
+    private final StatisticsAggregator statsAggregator;
 
     private static final Logger log = LoggerFactory.getLogger(KVServiceImpl.class);
     private final ExecutorService executor = Executors.newFixedThreadPool(8);
@@ -59,12 +61,14 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
         this.currentPort = Integer.parseInt(currentEndpoint.substring(currentEndpoint.lastIndexOf(':') + 1));
         this.server = HttpServer.create(new InetSocketAddress(currentPort), 0);
         this.client = HttpClient.newBuilder().executor(executor).connectTimeout(Duration.ofMillis(500)).build();
+        this.statsAggregator = new StatisticsAggregator();
         initRoutes();
     }
 
     private void initRoutes() {
         server.createContext(STATUS_PATH, this::handleStatus);
         server.createContext(ENTITY_PATH, this::handleEntity);
+        server.createContext(STAT_PATH, this::handleStats);
     }
 
      private void handleStatus(HttpExchange exchange) throws IOException {
@@ -90,13 +94,86 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
             }
 
             int ack = parseAck(exchange);
-            // log.debug("TEST ack {}", ack);
+            if (log.isDebugEnabled()) {
+                log.debug("TEST ack {}", ack);
+            }
+
             if (ack < 0) {
                 return;
             }
 
             handleQuorum(exchange, id, ack);
         }
+    }
+
+    private void handleStats(HttpExchange exchange) throws IOException {
+        try (exchange) {
+            String path = exchange.getRequestURI().getPath();
+            if (!GET_QUERY.equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, -1);
+                return;
+            }
+
+            String[] parts = path.split("/");
+
+            if (log.isDebugEnabled()) {
+                log.debug("TEST ack {}", Arrays.toString(parts));
+            }
+
+            if (parts.length != 4 || (parts.length == 5 && parts[4] != "access")) {
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+                return;
+            }
+
+            String targetReplica = parts[3];
+            String targetEndpoint = targetReplica.replace("_", ":");
+
+            if (currentEndpoint.equals(targetEndpoint)) {
+                handleLocalStats(exchange, path);
+                return;
+            }
+
+            proxyStatsRequest(exchange, targetEndpoint, path);
+        }
+    }
+
+    private void proxyStatsRequest(HttpExchange exchange, String targetEndpoint, String path) throws IOException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://" + targetEndpoint + path))
+                .GET()
+                .timeout(Duration.ofSeconds(1))
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+            .thenApply(resp -> new Response(resp.statusCode(), resp.body()))
+            .exceptionally(e -> new Response(HttpURLConnection.HTTP_UNAVAILABLE, null))
+            .thenAccept(resp -> sendStatResponse(exchange, resp.status(), resp.body()));
+    }
+
+    private void sendStatResponse(HttpExchange exchange, int status, byte[] body) {
+        try (exchange) {
+            int length = (body != null && body.length > 0) ? body.length : -1;
+            exchange.sendResponseHeaders(status, length);
+            if (length > 0) {
+                exchange.getResponseBody().write(body);
+            }
+        } catch (IOException e) {
+            log.error("Failed to send response", e);
+        }
+    }
+
+    private void handleLocalStats(HttpExchange exchange, String path) throws IOException {
+        String responseBody;
+        if (path.endsWith("/access")) {
+            responseBody = statsAggregator.getAccessJson();
+        } else {
+            responseBody = statsAggregator.getKeysJson();
+        }
+
+        byte[] bytes = responseBody.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, bytes.length);
+        exchange.getResponseBody().write(bytes);
     }
 
     private boolean handleInternalRequest(HttpExchange exchange, String id) throws IOException {
@@ -189,13 +266,16 @@ public class ReplicatedKVServiceImpl implements ReplicatedService {
         try {
             switch (method) {
                 case GET_QUERY -> {
+                    statsAggregator.trackRead();
                     return new Response(HttpURLConnection.HTTP_OK, dao.get(id));
                 }
                 case PUT_QUERY -> {
+                    statsAggregator.trackWrite(id);
                     dao.upsert(id, body);
                     return new Response(HttpURLConnection.HTTP_CREATED, null);
                 }
                 case DELETE_QUERY -> {
+                    statsAggregator.trackWrite(id);
                     dao.delete(id);
                     return new Response(HttpURLConnection.HTTP_ACCEPTED, null);
                 }
