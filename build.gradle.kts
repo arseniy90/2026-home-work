@@ -1,8 +1,12 @@
+import com.google.protobuf.gradle.id
+
 plugins {
     java
     application
     checkstyle
     pmd
+
+    id("com.google.protobuf") version "0.10.0"
 }
 
 java {
@@ -15,6 +19,11 @@ repositories {
     mavenCentral()
 }
 
+
+val reactiveGrpcVersion = "1.2.4"
+val grpcVersion = "1.58.0"
+val protobufVersion = "3.4.0"
+
 dependencies {
     checkstyle("com.puppycrawl.tools:checkstyle:13.3.0")
     implementation("com.github.spotbugs:spotbugs-annotations:4.9.8")
@@ -24,9 +33,40 @@ dependencies {
     implementation("com.h2database:h2:2.4.240")
     implementation("com.zaxxer:HikariCP:7.0.2")
 
+    implementation("com.google.protobuf:protobuf-java:${protobufVersion}")
+    implementation("com.google.protobuf:protobuf-java-util:${protobufVersion}")
+    implementation("com.salesforce.servicelibs:reactor-grpc-stub:${reactiveGrpcVersion}")
+    implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
+    implementation("io.grpc:grpc-protobuf:${grpcVersion}")
+    implementation("io.grpc:grpc-services:${grpcVersion}")
+    implementation("io.grpc:grpc-stub:${grpcVersion}")
+    implementation("io.projectreactor:reactor-core:3.8.5")
+
     testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        id("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+        id("reactor-grpc") {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:${reactiveGrpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.plugins {
+                create("grpc")
+                create("reactor-grpc")
+            }
+        }
+    }
 }
 
 sourceSets {
