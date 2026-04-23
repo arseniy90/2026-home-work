@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.service;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;

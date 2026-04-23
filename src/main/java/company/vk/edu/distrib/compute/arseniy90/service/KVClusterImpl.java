@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.service;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,9 +11,10 @@ import java.util.Map;
 
 import company.vk.edu.distrib.compute.Dao;
 import company.vk.edu.distrib.compute.KVCluster;
+import company.vk.edu.distrib.compute.arseniy90.dao.FSDaoImpl;
+import company.vk.edu.distrib.compute.arseniy90.routing.HashRouter;
 
 public class KVClusterImpl implements KVCluster {
-    private static final String HOST_COLON = "http://localhost:";
     private static final String NODE_DATA_PATH_PREFIX = "node_";
 
     private final Map<String, ReplicatedKVServiceImpl> nodes = new ConcurrentHashMap<>();
@@ -22,13 +23,10 @@ public class KVClusterImpl implements KVCluster {
     private final HashRouter hashRouter;
     private final int replicationFactor;
 
-    public KVClusterImpl(List<Integer> ports, Path workingDir, HashStrategy hashStrategy, int replicationFactor) {
-        this.endpoints = ports.stream()
-                .sorted()
-                .map(p -> HOST_COLON + p)
-                .toList();
+    public KVClusterImpl(List<String> endpoints, Path workingDir, HashRouter hashRouter, int replicationFactor) {
+        this.endpoints = endpoints;
         this.workingDir = workingDir;
-        this.hashRouter = hashStrategy.createRouter(endpoints);
+        this.hashRouter = hashRouter;
         this.replicationFactor = replicationFactor;
     }
 

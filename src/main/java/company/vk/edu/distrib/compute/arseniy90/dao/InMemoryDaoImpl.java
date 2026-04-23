@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.dao;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;

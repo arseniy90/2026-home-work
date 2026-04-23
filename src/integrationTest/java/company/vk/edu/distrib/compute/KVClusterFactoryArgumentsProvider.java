@@ -1,6 +1,6 @@
 package company.vk.edu.distrib.compute;
 
-import company.vk.edu.distrib.compute.arseniy90.ArzhKVClusterFactoryImpl;
+import company.vk.edu.distrib.compute.arseniy90.factory.ArzhKVClusterFactoryImpl;
 
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.extension.ExtensionContext;

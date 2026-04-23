@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.routing;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

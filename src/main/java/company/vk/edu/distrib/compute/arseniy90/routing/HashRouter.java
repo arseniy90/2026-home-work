@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.routing;
 
 import java.util.List;
 

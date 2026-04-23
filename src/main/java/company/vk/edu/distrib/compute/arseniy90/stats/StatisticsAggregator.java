@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.stats;
 
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.ConcurrentHashMap;

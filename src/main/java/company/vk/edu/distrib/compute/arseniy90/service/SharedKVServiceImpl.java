@@ -1,4 +1,4 @@
-package company.vk.edu.distrib.compute.arseniy90;
+package company.vk.edu.distrib.compute.arseniy90.service;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import company.vk.edu.distrib.compute.Dao;
 import company.vk.edu.distrib.compute.KVService;
+import company.vk.edu.distrib.compute.arseniy90.routing.HashRouter;
 
 public class SharedKVServiceImpl implements KVService {
     private static final String ENTITY_PATH = "/v0/entity";

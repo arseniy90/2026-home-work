@@ -3,7 +3,7 @@ package company.vk.edu.distrib.compute;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import company.vk.edu.distrib.compute.arseniy90.ArzhKVServiceFactoryImpl;
+import company.vk.edu.distrib.compute.arseniy90.factory.ArzhKVServiceFactoryImpl;
 import company.vk.edu.distrib.compute.aldor7705.KVServiceFactorySimple;
 import company.vk.edu.distrib.compute.andeco.AndecoKVServiceFactory;
 import company.vk.edu.distrib.compute.artttnik.MyKVServiceFactory;
