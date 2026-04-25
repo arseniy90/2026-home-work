@@ -3,6 +3,8 @@ package company.vk.edu.distrib.compute.arseniy90.replication;
 import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+// import java.util.concurrent.atomic.AtomicInteger;
+// import java.util.concurrent.atomic.AtomicReference;
 
 // import org.slf4j.Logger;
 // import org.slf4j.LoggerFactory;
@@ -52,3 +54,56 @@ public class QuorumCoordinator {
             });
     }
 }
+
+//     Этот вариант лучшн для обеспечения доступности, но не обеспечиваестя строгая согласованность
+//
+//     public CompletableFuture<Response> coordinateAsync(String method, String id, byte[] body, int ack) {
+//         List<String> targetEndpoints = hashRouter.getReplicas(id, replicationFactor);
+//         CompletableFuture<Response> resultResponse = new CompletableFuture<>();
+
+//         AtomicInteger successNodes = new AtomicInteger(0);
+//         AtomicInteger finishedNodes = new AtomicInteger(0);
+//         AtomicReference<Response> successResponse = new AtomicReference<>();
+
+//         for (String endpoint : targetEndpoints) {
+//             replicaClient.sendAsync(endpoint, method, id, body)
+//                 .whenComplete((resp, ex) ->
+//                     handle(resp, ex, ack, targetEndpoints.size(), successNodes, finishedNodes,
+//                          successResponse, resultResponse));
+//         }
+//         return resultResponse;
+//     }
+
+//     private void handle(Response resp, Throwable ex, int ack, int totalNodesCnt, AtomicInteger successNodes,
+//         AtomicInteger finishedNodes, AtomicReference<Response> successResponse,
+//         CompletableFuture<Response> resultResponse) {
+
+//         int finishedNodesCnt = finishedNodes.incrementAndGet();
+//         boolean isDataFound = isDataFound(resp, ex);
+
+//         if (isDataFound) {
+//             successResponse.set(resp);
+//             if (successNodes.incrementAndGet() == ack) {
+//                 resultResponse.complete(successResponse.get());
+//                 return;
+//             }
+//         }
+
+//         int remainedNodes = totalNodesCnt - finishedNodesCnt;
+//         if (successNodes.get() + remainedNodes < ack && !resultResponse.isDone()) {
+//             Response error = (resp != null && resp.status() == HttpURLConnection.HTTP_NOT_FOUND) ? resp
+//                 : new Response(HttpURLConnection.HTTP_UNAVAILABLE, null);
+//             resultResponse.complete(error);
+//         }
+//     }
+
+//     private boolean isDataFound(Response resp, Throwable ex) {
+//         if (ex != null || resp == null) {
+//             return false;
+//         }
+
+//         int status = resp.status();
+//         return status < HttpURLConnection.HTTP_INTERNAL_ERROR;
+//     }
+
+// }
